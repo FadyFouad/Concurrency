@@ -8,9 +8,10 @@ import com.etaTech.AnsiColors;
 public class Main {
     public static void main(String[] args) {
         System.out.println("------------------------Counter---------------------------");
-        CountDown countDown = new CountDown();
-        CountDownThread thread1 = new CountDownThread(countDown);
-        CountDownThread thread2 = new CountDownThread(countDown);
+        CountDown countDown0 = new CountDown();
+//        CountDown countDown1 = new CountDown();//No Thread Interference (Not efficient)
+        CountDownThread thread1 = new CountDownThread(countDown0);
+        CountDownThread thread2 = new CountDownThread(countDown0);
 //        thread1.getName();
 //        thread2.getName();
         thread1.start();
@@ -19,8 +20,9 @@ public class Main {
 }
 
 class CountDown {
-//    private int i ; instant var stored at heap but local stored at  stack
-    public void doCountDown() {
+    private int i; //instant var stored at heap but local stored at  stack
+
+    public /*synchronized*/ void doCountDown() {//synchronized methods preventing thread interference and memory consistency errors
         String color;
         switch (Thread.currentThread().getName()) {
             case "Thread-0":
@@ -32,8 +34,10 @@ class CountDown {
             default:
                 color = AnsiColors.ANSI_RESET;
         }
-        for (int i=10; i > 0; i--) {
-            System.out.println(color + Thread.currentThread().getName() + " # " + i);
+        synchronized (this) {
+            for (i = 10; i > 0; i--) {
+                System.out.println(color + Thread.currentThread().getName() + " # " + i);
+            }
         }
     }
 }
