@@ -2,11 +2,8 @@ package com.etaTech.ProducerConsumer;
 
 import com.etaTech.AnsiColors;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static com.etaTech.ProducerConsumer.Main.EOF;
 
@@ -17,24 +14,24 @@ public class Main {
     public static final String EOF = "EOF";
 
     public static void main(String[] args) {
-        List<String> bufer = new ArrayList<>();
-        ReentrantLock lock = new ReentrantLock();
+        ArrayBlockingQueue<String> bufer = new ArrayBlockingQueue<>(4);
+
         ExecutorService service = Executors.newFixedThreadPool(3);
-        Producer producer = new Producer(bufer, AnsiColors.ANSI_GREEN, lock);
-        Consumer consumer = new Consumer(bufer, AnsiColors.ANSI_RED, lock);
-        Consumer consumer2 = new Consumer(bufer, AnsiColors.ANSI_YELLOW, lock);
+        Producer producer = new Producer(bufer, AnsiColors.ANSI_GREEN);
+        Consumer consumer = new Consumer(bufer, AnsiColors.ANSI_RED);
+        Consumer consumer2 = new Consumer(bufer, AnsiColors.ANSI_YELLOW);
         service.execute(producer);
         service.execute(consumer);
         service.execute(consumer2);
-        Future<String>future = service.submit(new Callable<String>() {
+        Future<String> future = service.submit(new Callable<String>() {
             @Override
             public String call() throws Exception {
-                System.out.println(AnsiColors.ANSI_PURPLE+"Callable Class");
+                System.out.println(AnsiColors.ANSI_PURPLE + "Callable Class");
                 return "Callable Method return this";
             }
         });
-        try{
-            System.out.println("try block : "+future.get());
+        try {
+            System.out.println("try block : " + future.get());
         } catch (InterruptedException e) {
             e.printStackTrace();
         } catch (ExecutionException e) {
@@ -46,14 +43,14 @@ public class Main {
 
 class Producer implements Runnable {
 
-    private List<String> buffer;
+    private ArrayBlockingQueue<String> buffer;
     private String color;
-    private ReentrantLock lock;
+//    private ReentrantLock lock ;
 
-    public Producer(List<String> buffer, String color, ReentrantLock lock) {
+    public Producer(ArrayBlockingQueue<String> buffer, String color) {
         this.buffer = buffer;
         this.color = color;
-        this.lock = lock;
+//        this.lock = lock;
     }
 
     @Override
@@ -65,12 +62,13 @@ class Producer implements Runnable {
 //            synchronized (buffer) {
             try {
                 System.out.println(color + "Adding.." + num + " --> " + Thread.currentThread().getName());
-                lock.lock();
-                try {
-                    buffer.add(num);
-                } finally {
-                    lock.unlock();
-                }
+                buffer.put(num);
+//                  lock.lock();
+//                try {
+//                buffer.add(num);
+//                } finally {
+//                    lock.unlock();
+//                }
 
                 Thread.sleep(random.nextInt(2000));
             } catch (InterruptedException e) {
@@ -79,43 +77,50 @@ class Producer implements Runnable {
         }
 //        }
         System.out.println(AnsiColors.ANSI_WHITE + "Buffer Adding EOF" + " --> " + Thread.currentThread().getName());
-        lock.lock();
+//        lock.lock();
         try {
-            buffer.add("EOF");
-        } finally {
-            lock.unlock();
+            buffer.put("EOF");
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
+//        } finally {
+//            lock.unlock();
+//        }
     }
 }
 
 
 class Consumer implements Runnable {
-    private List<String> buffer;
+    private ArrayBlockingQueue<String> buffer;
     private String color;
-    private ReentrantLock lock;
+//    private ReentrantLock lock;
 
-    public Consumer(List<String> buffer, String color, ReentrantLock lock) {
+    public Consumer(ArrayBlockingQueue<String> buffer, String color) {
         this.buffer = buffer;
         this.color = color;
-        this.lock = lock;
+//        this.lock = lock;
     }
 
     @Override
     public void run() {
         while (true) {
-            try {
-                lock.lock();
-                if (buffer.isEmpty()) {
-                    continue;
+            synchronized (buffer) {
+                try {
+//                lock.lock();
+                    if (buffer.isEmpty()) {
+                        continue;
+                    }
+                    if (buffer.peek().equals(EOF)) {
+                        System.out.println(color + "Exiting" + " --> " + Thread.currentThread().getName());
+                        break;
+                    } else {
+                        System.out.println(color + " Removed " + buffer.take() + " --> " + Thread.currentThread().getName());
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } finally {
+//                lock.unlock();
                 }
-                if (buffer.get(0).equals(EOF)) {
-                    System.out.println(color + "Exiting" + " --> " + Thread.currentThread().getName());
-                    break;
-                } else {
-                    System.out.println(color + " Removed " + buffer.remove(0) + " --> " + Thread.currentThread().getName());
-                }
-            } finally {
-                lock.unlock();
             }
         }
     }
