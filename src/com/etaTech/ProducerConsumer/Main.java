@@ -11,7 +11,7 @@ import static com.etaTech.ProducerConsumer.Main.EOF;
  *** Created by Fady Fouad on 6/12/2019 at 11:33.***
  ***************************************************/
 public class Main {
-    public static final String EOF = "EOF";
+    static final String EOF = "EOF";
 
     public static void main(String[] args) {
         ArrayBlockingQueue<String> bufer = new ArrayBlockingQueue<>(4);
@@ -23,18 +23,13 @@ public class Main {
         service.execute(producer);
         service.execute(consumer);
         service.execute(consumer2);
-        Future<String> future = service.submit(new Callable<String>() {
-            @Override
-            public String call() throws Exception {
-                System.out.println(AnsiColors.ANSI_PURPLE + "Callable Class");
-                return "Callable Method return this";
-            }
+        Future<String> future = service.submit(() -> {
+            System.out.println(AnsiColors.ANSI_PURPLE + "Callable Class");
+            return "Callable Method return this";
         });
         try {
             System.out.println("try block : " + future.get());
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
+        } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
         service.shutdown();
@@ -45,12 +40,10 @@ class Producer implements Runnable {
 
     private ArrayBlockingQueue<String> buffer;
     private String color;
-//    private ReentrantLock lock ;
 
-    public Producer(ArrayBlockingQueue<String> buffer, String color) {
+    Producer(ArrayBlockingQueue<String> buffer, String color) {
         this.buffer = buffer;
         this.color = color;
-//        this.lock = lock;
     }
 
     @Override
@@ -59,46 +52,31 @@ class Producer implements Runnable {
         String[] nums = {"1", "2", "3", "4",};
         for (String num :
                 nums) {
-//            synchronized (buffer) {
             try {
                 System.out.println(color + "Adding.." + num + " --> " + Thread.currentThread().getName());
                 buffer.put(num);
-//                  lock.lock();
-//                try {
-//                buffer.add(num);
-//                } finally {
-//                    lock.unlock();
-//                }
-
                 Thread.sleep(random.nextInt(2000));
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
-//        }
         System.out.println(AnsiColors.ANSI_WHITE + "Buffer Adding EOF" + " --> " + Thread.currentThread().getName());
-//        lock.lock();
         try {
             buffer.put("EOF");
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-//        } finally {
-//            lock.unlock();
-//        }
     }
 }
 
 
 class Consumer implements Runnable {
-    private ArrayBlockingQueue<String> buffer;
+    private final ArrayBlockingQueue<String> buffer;
     private String color;
-//    private ReentrantLock lock;
 
-    public Consumer(ArrayBlockingQueue<String> buffer, String color) {
+    Consumer(ArrayBlockingQueue<String> buffer, String color) {
         this.buffer = buffer;
         this.color = color;
-//        this.lock = lock;
     }
 
     @Override
@@ -106,7 +84,6 @@ class Consumer implements Runnable {
         while (true) {
             synchronized (buffer) {
                 try {
-//                lock.lock();
                     if (buffer.isEmpty()) {
                         continue;
                     }
@@ -118,8 +95,6 @@ class Consumer implements Runnable {
                     }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
-                } finally {
-//                lock.unlock();
                 }
             }
         }
