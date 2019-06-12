@@ -5,6 +5,7 @@ import com.etaTech.AnsiColors;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static com.etaTech.ProducerConsumer.Main.EOF;
@@ -18,13 +19,28 @@ public class Main {
     public static void main(String[] args) {
         List<String> bufer = new ArrayList<>();
         ReentrantLock lock = new ReentrantLock();
+        ExecutorService service = Executors.newFixedThreadPool(3);
         Producer producer = new Producer(bufer, AnsiColors.ANSI_GREEN, lock);
         Consumer consumer = new Consumer(bufer, AnsiColors.ANSI_RED, lock);
         Consumer consumer2 = new Consumer(bufer, AnsiColors.ANSI_YELLOW, lock);
-        new Thread(producer).start();
-        new Thread(consumer).start();
-        new Thread(consumer2).start();
-
+        service.execute(producer);
+        service.execute(consumer);
+        service.execute(consumer2);
+        Future<String>future = service.submit(new Callable<String>() {
+            @Override
+            public String call() throws Exception {
+                System.out.println(AnsiColors.ANSI_PURPLE+"Callable Class");
+                return "Callable Method return this";
+            }
+        });
+        try{
+            System.out.println("try block : "+future.get());
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+        service.shutdown();
     }
 }
 
@@ -48,10 +64,13 @@ class Producer implements Runnable {
                 nums) {
 //            synchronized (buffer) {
             try {
-                System.out.println(color + "Adding.." + num+ " --> " +Thread.currentThread().getName());
+                System.out.println(color + "Adding.." + num + " --> " + Thread.currentThread().getName());
                 lock.lock();
-                buffer.add(num);
-                lock.unlock();
+                try {
+                    buffer.add(num);
+                } finally {
+                    lock.unlock();
+                }
 
                 Thread.sleep(random.nextInt(2000));
             } catch (InterruptedException e) {
@@ -59,10 +78,13 @@ class Producer implements Runnable {
             }
         }
 //        }
-        System.out.println(AnsiColors.ANSI_WHITE + "Buffer Adding EOF"+ " --> " +Thread.currentThread().getName());
+        System.out.println(AnsiColors.ANSI_WHITE + "Buffer Adding EOF" + " --> " + Thread.currentThread().getName());
         lock.lock();
-        buffer.add("EOF");
-        lock.unlock();
+        try {
+            buffer.add("EOF");
+        } finally {
+            lock.unlock();
+        }
     }
 }
 
@@ -81,19 +103,20 @@ class Consumer implements Runnable {
     @Override
     public void run() {
         while (true) {
-            lock.lock();
-            if (buffer.isEmpty()) {
+            try {
+                lock.lock();
+                if (buffer.isEmpty()) {
+                    continue;
+                }
+                if (buffer.get(0).equals(EOF)) {
+                    System.out.println(color + "Exiting" + " --> " + Thread.currentThread().getName());
+                    break;
+                } else {
+                    System.out.println(color + " Removed " + buffer.remove(0) + " --> " + Thread.currentThread().getName());
+                }
+            } finally {
                 lock.unlock();
-                continue;
             }
-            if (buffer.get(0).equals(EOF)) {
-                System.out.println(color + "Exiting"+ " --> " +Thread.currentThread().getName());
-                lock.unlock();
-                break;
-            } else {
-                System.out.println(color + " Removed " + buffer.remove(0)+ " --> " +Thread.currentThread().getName());
-            }
-            lock.unlock();
         }
     }
 }
