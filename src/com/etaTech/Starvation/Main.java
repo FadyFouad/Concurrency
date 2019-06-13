@@ -2,13 +2,14 @@ package com.etaTech.Starvation;
 
 import com.etaTech.AnsiColors;
 
+import java.util.concurrent.locks.ReentrantLock;
 
 
 /****************************************************
  *** Created by Fady Fouad on 6/13/2019 at 14:25.***
  ***************************************************/
 public class Main {
-    private static final Object lock =new Object();
+    private static final ReentrantLock lock =new ReentrantLock(true); //true ==> Fair lock
     public static void main(String[] args) {
         System.out.println("\n-------------------------Starvation----------------------\n");
 //        Worker worker = new Worker(AnsiColors.ANSI_YELLOW);
@@ -42,9 +43,15 @@ public class Main {
         @Override
         public void run() {
             for (int i = 0; i < 100; i++) {
-                synchronized (lock){
-                    System.out.format(color+"%s : Count = %d\n",Thread.currentThread().getName(),count++);
+                lock.lock();
+                try {
+//                    synchronized (lock){
+                        System.out.format(color+"%s : Count = %d\n",Thread.currentThread().getName(),count++);
+//                    }
+                }finally {
+                    lock.unlock();
                 }
+
             }
         }
     }
